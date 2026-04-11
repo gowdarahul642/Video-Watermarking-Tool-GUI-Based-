@@ -1,0 +1,142 @@
+import tkinter as tk
+from tkinter import filedialog, messagebox
+from moviepy.editor import VideoFileClip, ImageClip, CompositeVideoClip
+import os
+
+# ================= GUI WINDOW ================= #
+window = tk.Tk()
+window.title("Video Watermark Tool")
+window.geometry("420x550")
+
+# ================= FUNCTIONS ================= #
+
+def process_videos():
+    folder_path = folder_path_entry.get().strip()
+    output_folder_path = output_folder_path_entry.get().strip()
+    logo_path = logo_path_entry.get().strip()
+    logo_position = logo_position_var.get()
+
+    # Validation
+    if not folder_path or not output_folder_path or not logo_path:
+        messagebox.showerror("Error", "Please fill all fields!")
+        return
+
+    if not os.path.exists(folder_path):
+        messagebox.showerror("Error", "Input folder does not exist!")
+        return
+
+    if not os.path.exists(logo_path):
+        messagebox.showerror("Error", "Logo file not found!")
+        return
+
+    os.makedirs(output_folder_path, exist_ok=True)
+
+    processed_count = 0
+
+    for filename in os.listdir(folder_path):
+        if filename.lower().endswith(".mp4"):
+            try:
+                video_path = os.path.join(folder_path, filename)
+                video_clip = VideoFileClip(video_path)
+
+                # Optional: resize for reels (vertical)
+                # video_clip = video_clip.resize(height=1920)
+
+                # Create fresh logo for each video
+                logo = (ImageClip(logo_path)
+                        .set_duration(video_clip.duration)
+                        .resize(width=150)
+                        .set_opacity(0.8))
+
+                # Logo position mapping
+                position_map = {
+                    "Top Left": ("left", "top"),
+                    "Top Right": ("right", "top"),
+                    "Bottom Left": ("left", "bottom"),
+                    "Bottom Right": ("right", "bottom")
+                }
+
+                logo = logo.set_position(position_map.get(logo_position, ("left", "top")))
+
+                # Combine video + logo
+                final_clip = CompositeVideoClip([video_clip, logo])
+
+                # Output path
+                output_path = os.path.join(output_folder_path, filename)
+
+                # Export video
+                final_clip.write_videofile(
+                    output_path,
+                    codec="libx264",
+                    audio_codec="aac"
+                )
+
+                # Cleanup (important)
+                video_clip.close()
+                final_clip.close()
+
+                processed_count += 1
+
+            except Exception as e:
+                print(f"Error processing {filename}: {e}")
+
+    messagebox.showinfo("Success", f"{processed_count} videos processed successfully!")
+
+
+# ================= BROWSE FUNCTIONS ================= #
+
+def browse_input_folder():
+    path = filedialog.askdirectory()
+    if path:
+        folder_path_entry.delete(0, tk.END)
+        folder_path_entry.insert(0, path)
+
+
+def browse_output_folder():
+    path = filedialog.askdirectory()
+    if path:
+        output_folder_path_entry.delete(0, tk.END)
+        output_folder_path_entry.insert(0, path)
+
+
+def browse_logo():
+    path = filedialog.askopenfilename(
+        filetypes=[("Image Files", "*.png *.jpg *.jpeg")]
+    )
+    if path:
+        logo_path_entry.delete(0, tk.END)
+        logo_path_entry.insert(0, path)
+
+
+# ================= UI ELEMENTS ================= #
+
+# Input Folder
+tk.Label(window, text="Input Folder").pack(pady=5)
+folder_path_entry = tk.Entry(window, width=45)
+folder_path_entry.pack()
+tk.Button(window, text="Browse", command=browse_input_folder).pack(pady=5)
+
+# Output Folder
+tk.Label(window, text="Output Folder").pack(pady=5)
+output_folder_path_entry = tk.Entry(window, width=45)
+output_folder_path_entry.pack()
+tk.Button(window, text="Browse", command=browse_output_folder).pack(pady=5)
+
+# Logo File
+tk.Label(window, text="Logo File").pack(pady=5)
+logo_path_entry = tk.Entry(window, width=45)
+logo_path_entry.pack()
+tk.Button(window, text="Browse", command=browse_logo).pack(pady=5)
+
+# Logo Position
+tk.Label(window, text="Logo Position").pack(pady=5)
+logo_position_var = tk.StringVar(value="Top Left")
+tk.OptionMenu(window, logo_position_var,
+              "Top Left", "Top Right", "Bottom Left", "Bottom Right").pack()
+
+# Process Button
+tk.Button(window, text="Process Videos", command=process_videos,
+          bg="#4CAF50", fg="white", padx=10, pady=5).pack(pady=20)
+
+# ================= START GUI ================= #
+window.mainloop()
