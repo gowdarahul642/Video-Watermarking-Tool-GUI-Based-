@@ -6,9 +6,7 @@ import os
 window = tk.Tk()
 window.title("Video Watermark Tool")
 window.geometry("420x550")
-
 # ================= FUNCTIONS ================= #
-
 def process_videos():
     folder_path = folder_path_entry.get().strip()
     output_folder_path = output_folder_path_entry.get().strip()
